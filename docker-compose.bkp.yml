@@ -1,55 +1,12 @@
-version: "3.9"
+# Docker Compose profiles:
+# - Default (no profile): Starts archon-server, archon-mcp, and archon-frontend
+# - Agents are opt-in: archon-agents starts only with the "agents" profile
+# Usage:
+#   docker compose up                        # Starts server, mcp, frontend (agents disabled)
+#   docker compose --profile agents up -d    # Also starts archon-agents
 
 services:
-  # -------------------------
-  # Local Supabase (Postgres + pgvector + PostgREST)
-  # -------------------------
-  supabase-db:
-    image: supabase/postgres:15.1.1.1
-    container_name: supabase-db
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_PASSWORD: supabase_password
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
-    volumes:
-      - supabase-data:/var/lib/postgresql/data
-      - ./migration/init_pgvector.sql:/docker-entrypoint-initdb.d/init_pgvector.sql:ro
-
-  supabase-api:
-    image: supabase/postgrest:v10.2.0
-    container_name: supabase-api
-    restart: unless-stopped
-    depends_on:
-      supabase-db:
-        condition: service_healthy
-    environment:
-      PGRST_DB_URI: postgres://postgres:supabase_password@supabase-db:5432/postgres
-      PGRST_DB_SCHEMA: public
-      PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: super-secret-key
-    ports:
-      - "8000:8000"
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # -------------------------
-  # Archon Services
-  # -------------------------
+  # Server Service (FastAPI + Socket.IO + Crawling)
   archon-server:
     build:
       context: ./python
@@ -61,8 +18,8 @@ services:
     ports:
       - "${ARCHON_SERVER_PORT:-8181}:${ARCHON_SERVER_PORT:-8181}"
     environment:
-      - SUPABASE_URL=http://supabase-api:8000
-      - SUPABASE_SERVICE_KEY=super-secret-key
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
       - SERVICE_DISCOVERY_MODE=docker_compose
@@ -74,14 +31,11 @@ services:
     networks:
       - app-network
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./python/src:/app/src
-      - ./python/tests:/app/tests
+      - /var/run/docker.sock:/var/run/docker.sock # Docker socket for MCP container control
+      - ./python/src:/app/src # Mount source code for hot reload
+      - ./python/tests:/app/tests # Mount tests for UI test execution
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on:
-      supabase-api:
-        condition: service_healthy
     command:
       [
         "python",
@@ -98,32 +52,37 @@ services:
       test:
         [
           "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${ARCHON_SERVER_PORT:-8181}/health",
+          "sh",
+          "-c",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:${ARCHON_SERVER_PORT:-8181}/health'')"',
         ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
+  # Lightweight MCP Server Service (HTTP-based)
   archon-mcp:
     build:
       context: ./python
       dockerfile: Dockerfile.mcp
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        ARCHON_MCP_PORT: ${ARCHON_MCP_PORT:-8051}
     container_name: archon-mcp
     ports:
       - "${ARCHON_MCP_PORT:-8051}:${ARCHON_MCP_PORT:-8051}"
     environment:
-      - SUPABASE_URL=http://supabase-api:8000
-      - SUPABASE_SERVICE_KEY=super-secret-key
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
       - SERVICE_DISCOVERY_MODE=docker_compose
       - TRANSPORT=sse
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # MCP needs to know where to find other services
       - API_SERVICE_URL=http://archon-server:${ARCHON_SERVER_PORT:-8181}
       - AGENTS_ENABLED=${AGENTS_ENABLED:-false}
-      - AGENTS_SERVICE_URL=http://archon-agents:${ARCHON_AGENTS_PORT:-8052}
+      - AGENTS_SERVICE_URL=${AGENTS_SERVICE_URL:-http://archon-agents:${ARCHON_AGENTS_PORT:-8052}}
       - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
       - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
       - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
@@ -132,27 +91,38 @@ services:
     depends_on:
       archon-server:
         condition: service_healthy
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${ARCHON_MCP_PORT:-8051}"]
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          'python -c "import socket; s=socket.socket(); s.connect((''localhost'', ${ARCHON_MCP_PORT:-8051})); s.close()"',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 60s # Give dependencies time to start
 
+  # AI Agents Service (ML/Reranking)
   archon-agents:
     profiles:
-      - agents
+      - agents # Only starts when explicitly using --profile agents
     build:
       context: ./python
       dockerfile: Dockerfile.agents
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        ARCHON_AGENTS_PORT: ${ARCHON_AGENTS_PORT:-8052}
     container_name: archon-agents
     ports:
       - "${ARCHON_AGENTS_PORT:-8052}:${ARCHON_AGENTS_PORT:-8052}"
     environment:
-      - SUPABASE_URL=http://supabase-api:8000
-      - SUPABASE_SERVICE_KEY=super-secret-key
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
       - SERVICE_DISCOVERY_MODE=docker_compose
@@ -161,22 +131,20 @@ services:
       - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
     networks:
       - app-network
-    depends_on:
-      supabase-api:
-        condition: service_healthy
     healthcheck:
       test:
         [
           "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${ARCHON_AGENTS_PORT:-8052}/health",
+          "sh",
+          "-c",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:${ARCHON_AGENTS_PORT:-8052}/health'')"',
         ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
+  # Frontend
   archon-frontend:
     build: ./archon-ui-main
     container_name: archon-ui
@@ -192,21 +160,18 @@ services:
       - VITE_SHOW_DEVTOOLS=${VITE_SHOW_DEVTOOLS:-false}
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3737"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     volumes:
       - ./archon-ui-main/src:/app/src
       - ./archon-ui-main/public:/app/public
     depends_on:
       archon-server:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3737"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 networks:
   app-network:
     driver: bridge
-
-volumes:
-  supabase-data:
