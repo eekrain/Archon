@@ -80,7 +80,7 @@ services:
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
     entrypoint: bash -c 'cp /home/kong/temp.yml /home/kong/kong.yml && /docker-entrypoint.sh kong docker-start'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/status"]
       interval: 30s
       timeout: 10s
       retries: 3
