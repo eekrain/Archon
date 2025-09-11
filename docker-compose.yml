@@ -1,21 +1,23 @@
 version: "3.9"
 
 services:
+  # -------------------------
+  # Supabase Core
+  # -------------------------
   supabase-db:
-    image: supabase/postgres:15.8.1.047
+    image: supabase/postgres:${SUPABASE_DB_VERSION:-15.8.1.047}
     container_name: supabase-db
     restart: unless-stopped
     ports:
       - "5432:5432"
-    environment:
-      POSTGRES_PASSWORD: supabase_password
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - app-network
     volumes:
@@ -23,17 +25,14 @@ services:
       - ./migration/init_pgvector.sql:/docker-entrypoint-initdb.d/init_pgvector.sql:ro
 
   supabase-api:
-    image: postgrest/postgrest:latest
+    image: postgrest/postgrest:${POSTGREST_VERSION:-latest}
     container_name: supabase-api
     restart: unless-stopped
     depends_on:
       supabase-db:
         condition: service_healthy
-    environment:
-      PGRST_DB_URI: postgres://postgres:supabase_password@supabase-db:5432/postgres
-      PGRST_DB_SCHEMA: public
-      PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: supersecretjwtkeymustbeatleast32charslong123!
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     networks:
@@ -43,25 +42,66 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 45s
 
+  supabase-meta:
+    image: supabase/pg-meta:latest
+    container_name: supabase-meta
+    restart: unless-stopped
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PG_META_DB_HOST: supabase-db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: ${POSTGRES_USER}
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "8081:8080"
+    networks:
+      - app-network
+
+  supabase-studio:
+    image: supabase/studio:latest
+    container_name: supabase-studio
+    restart: unless-stopped
+    depends_on:
+      - supabase-api
+      - supabase-meta
+    environment:
+      SUPABASE_URL: http://supabase-api:8000
+      STUDIO_PG_META_URL: http://supabase-meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "8080:3000"
+    networks:
+      - app-network
+
+  # -------------------------
+  # Archon Core
+  # -------------------------
   archon-server:
     build:
       context: ./python
       dockerfile: Dockerfile.server
     container_name: archon-server
     ports:
-      - "${ARCHON_SERVER_PORT:-8181}:${ARCHON_SERVER_PORT:-8181}"
-    environment:
-      - SUPABASE_URL=http://supabase-api:8000
-      - SUPABASE_SERVICE_KEY=supersecretjwtkeymustbeatleast32charslong123!
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - "${ARCHON_SERVER_PORT}:${ARCHON_SERVER_PORT}"
+    env_file:
+      - .env
     networks:
       - app-network
     depends_on:
       supabase-api:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "curl", "-f", "http://localhost:${ARCHON_SERVER_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   archon-mcp:
     build:
@@ -69,17 +109,20 @@ services:
       dockerfile: Dockerfile.mcp
     container_name: archon-mcp
     ports:
-      - "${ARCHON_MCP_PORT:-8051}:${ARCHON_MCP_PORT:-8051}"
-    environment:
-      - SUPABASE_URL=http://supabase-api:8000
-      - SUPABASE_SERVICE_KEY=supersecretjwtkeymustbeatleast32charslong123!
-      - API_SERVICE_URL=http://archon-server:${ARCHON_SERVER_PORT:-8181}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - "${ARCHON_MCP_PORT}:${ARCHON_MCP_PORT}"
+    env_file:
+      - .env
     networks:
       - app-network
     depends_on:
       archon-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${ARCHON_MCP_PORT}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   archon-agents:
     profiles:
@@ -89,32 +132,40 @@ services:
       dockerfile: Dockerfile.agents
     container_name: archon-agents
     ports:
-      - "${ARCHON_AGENTS_PORT:-8052}:${ARCHON_AGENTS_PORT:-8052}"
-    environment:
-      - SUPABASE_URL=http://supabase-api:8000
-      - SUPABASE_SERVICE_KEY=supersecretjwtkeymustbeatleast32charslong123!
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - "${ARCHON_AGENTS_PORT}:${ARCHON_AGENTS_PORT}"
+    env_file:
+      - .env
     networks:
       - app-network
     depends_on:
       supabase-api:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "curl", "-f", "http://localhost:${ARCHON_AGENTS_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   archon-frontend:
     build: ./archon-ui-main
     container_name: archon-ui
     ports:
-      - "${ARCHON_UI_PORT:-3737}:3737"
-    environment:
-      - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-8181}
-      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
-      - HOST=${HOST:-localhost}
+      - "${ARCHON_UI_PORT}:3737"
+    env_file:
+      - .env
     networks:
       - app-network
     depends_on:
       archon-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3737"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 networks:
   app-network:
