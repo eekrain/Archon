@@ -24,7 +24,7 @@ services:
     volumes:
       - supabase-data:/var/lib/postgresql/data
       - ./migration/init_pgvector.sql:/docker-entrypoint-initdb.d/init_pgvector.sql:ro
-      - ./migration/init_roles.sql:/docker-entrypoint-initdb.d/init_roles.sql:ro
+      - ./migration/init_all.sql:/docker-entrypoint-initdb.d/init_all.sql:ro
 
   supabase-api:
     image: postgrest/postgrest:${POSTGREST_VERSION:-latest}
