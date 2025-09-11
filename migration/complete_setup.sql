@@ -109,11 +109,11 @@ ALTER TABLE archon_settings ENABLE ROW LEVEL SECURITY;
 
 -- Use proper Supabase role checking
 CREATE POLICY "Allow service role full access" ON archon_settings
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read and update" ON archon_settings
     FOR ALL TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow anonymous read access" ON archon_settings
     FOR SELECT TO anon
