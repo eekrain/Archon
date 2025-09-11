@@ -4,18 +4,24 @@ services:
   - name: auth
     url: http://auth:9999
     routes:
-      - /auth/v1/
+      - name: auth-route
+        paths:
+          - /auth/v1/
     plugins:
       - name: cors
   - name: rest
     url: http://rest:3000
     routes:
-      - /rest/v1/
+      - name: rest-route
+        paths:
+          - /rest/v1/
     plugins:
       - name: cors
   - name: meta
     url: http://meta:8080
     routes:
-      - /meta/
+      - name: meta-route
+        paths:
+          - /meta/
     plugins:
       - name: cors

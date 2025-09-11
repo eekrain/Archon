@@ -618,16 +618,19 @@ CREATE POLICY "Allow service role full access to archon_code_examples" ON archon
 
 -- Allow authenticated users to write
 CREATE POLICY "Allow authenticated write access to archon_crawled_pages" ON archon_crawled_pages
-    FOR INSERT, UPDATE, DELETE TO authenticated
-    USING (current_user = 'authenticated' OR current_user = 'service_role');
+    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role')
+    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role')
+    FOR DELETE USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated write access to archon_sources" ON archon_sources
-    FOR INSERT, UPDATE, DELETE TO authenticated
-    USING (current_user = 'authenticated' OR current_user = 'service_role');
+    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role')
+    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role')
+    FOR DELETE USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated write access to archon_code_examples" ON archon_code_examples
-    FOR INSERT, UPDATE, DELETE TO authenticated
-    USING (current_user = 'authenticated' OR current_user = 'service_role');
+    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role')
+    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role')
+    FOR DELETE USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 -- Grant permissions to roles
 GRANT ALL ON archon_crawled_pages TO supabase_admin;

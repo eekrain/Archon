@@ -2,20 +2,24 @@
 -- This creates the necessary database users with proper authentication
 -- Default password is 'supersecretpassword' - change this in production
 
--- Create roles with password authentication
+-- Create or update roles with password authentication
 DO $$
 BEGIN
-    -- Create supabase_auth_admin role with password
+    -- Create or update supabase_auth_admin role with password
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
         CREATE ROLE supabase_auth_admin WITH LOGIN PASSWORD 'supersecretpassword' NOINHERIT CREATEROLE;
+    ELSE
+        ALTER ROLE supabase_auth_admin WITH LOGIN PASSWORD 'supersecretpassword';
     END IF;
     
-    -- Create authenticator role with password  
+    -- Create or update authenticator role with password  
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
         CREATE ROLE authenticator WITH LOGIN PASSWORD 'supersecretpassword' NOINHERIT;
+    ELSE
+        ALTER ROLE authenticator WITH LOGIN PASSWORD 'supersecretpassword';
     END IF;
     
-    -- Create other necessary roles
+    -- Create other necessary roles if they don't exist
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
         CREATE ROLE supabase_admin NOLOGIN;
     END IF;
