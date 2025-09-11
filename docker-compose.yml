@@ -1,9 +1,6 @@
 version: "3.9"
 
 services:
-  # -------------------------
-  # Supabase Core
-  # -------------------------
   supabase-db:
     image: supabase/postgres:${SUPABASE_DB_VERSION:-15.8.1.047}
     container_name: supabase-db
@@ -13,11 +10,15 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 20s
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1",
+        ]
+      interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 60s
+      retries: 30
+      start_period: 180s
     networks:
       - app-network
     volumes:
@@ -31,7 +32,7 @@ services:
     restart: unless-stopped
     depends_on:
       supabase-db:
-        condition: service_healthy
+        condition: service_started
     env_file:
       - .env
     ports:
@@ -39,11 +40,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000"]
-      interval: 20s
+      test: ["CMD-SHELL", "curl -fs http://localhost:8000 || exit 1"]
+      interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 60s
+      retries: 30
+      start_period: 180s
 
   supabase-meta:
     image: supabase/postgres-meta:${POSTGRES_META_VERSION:-v0.60.5}
@@ -51,7 +52,7 @@ services:
     restart: unless-stopped
     depends_on:
       supabase-db:
-        condition: service_healthy
+        condition: service_started
     environment:
       DB_HOST: supabase-db
       DB_PORT: 5432
@@ -63,12 +64,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test:
-        ["CMD-SHELL", "wget --spider -q http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 60s
+      retries: 30
+      start_period: 180s
 
   supabase-studio:
     image: supabase/studio:latest
@@ -86,15 +86,12 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000 || exit 1"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000 || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 90s
+      retries: 30
+      start_period: 180s
 
-  # -------------------------
-  # Archon Core
-  # -------------------------
   archon-server:
     build:
       context: ./python
@@ -108,14 +105,17 @@ services:
       - app-network
     depends_on:
       supabase-api:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test:
-        ["CMD", "curl", "-f", "http://localhost:${ARCHON_SERVER_PORT}/health"]
+        [
+          "CMD-SHELL",
+          "curl -fs http://localhost:${ARCHON_SERVER_PORT}/health || exit 1",
+        ]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 90s
+      retries: 30
+      start_period: 180s
 
   archon-mcp:
     build:
@@ -130,13 +130,14 @@ services:
       - app-network
     depends_on:
       archon-server:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${ARCHON_MCP_PORT}"]
+      test:
+        ["CMD-SHELL", "curl -fs http://localhost:${ARCHON_MCP_PORT} || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 90s
+      retries: 30
+      start_period: 180s
 
   archon-agents:
     profiles:
@@ -153,14 +154,17 @@ services:
       - app-network
     depends_on:
       supabase-api:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test:
-        ["CMD", "curl", "-f", "http://localhost:${ARCHON_AGENTS_PORT}/health"]
+        [
+          "CMD-SHELL",
+          "curl -fs http://localhost:${ARCHON_AGENTS_PORT}/health || exit 1",
+        ]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 90s
+      retries: 30
+      start_period: 180s
 
   archon-frontend:
     build: ./archon-ui-main
@@ -173,13 +177,13 @@ services:
       - app-network
     depends_on:
       archon-server:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3737"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:3737 || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 10
-      start_period: 60s
+      retries: 30
+      start_period: 180s
 
 networks:
   app-network:
