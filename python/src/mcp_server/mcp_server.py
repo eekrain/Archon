@@ -498,6 +498,66 @@ except Exception as e:
     raise
 
 
+def create_health_app():
+    """Create a minimal FastAPI app for health checks."""
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    
+    app = FastAPI(title="Archon MCP Health", description="Health check endpoint for MCP server")
+    
+    @app.get("/health")
+    async def health():
+        """Health check endpoint."""
+        return {
+            "status": "healthy",
+            "service": "archon-mcp",
+            "timestamp": datetime.now().isoformat(),
+            "uptime": time.time() - getattr(create_health_app, 'startup_time', time.time())
+        }
+    
+    @app.get("/")
+    async def root():
+        """Root endpoint."""
+        return {
+            "service": "archon-mcp",
+            "mcp_endpoint": "/mcp",
+            "health_endpoint": "/health",
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    return app
+
+
+def create_health_app():
+    """Create a minimal FastAPI app for health checks."""
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    
+    app = FastAPI(title="Archon MCP Health", description="Health check endpoint for MCP server")
+    
+    @app.get("/health")
+    async def health():
+        """Health check endpoint."""
+        return {
+            "status": "healthy",
+            "service": "archon-mcp",
+            "timestamp": datetime.now().isoformat(),
+            "uptime": time.time() - getattr(create_health_app, 'startup_time', time.time())
+        }
+    
+    @app.get("/")
+    async def root():
+        """Root endpoint."""
+        return {
+            "service": "archon-mcp",
+            "mcp_endpoint": "/mcp",
+            "health_endpoint": "/health",
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    return app
+
+
 def main():
     """Main entry point for the MCP server."""
     try:
