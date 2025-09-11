@@ -58,8 +58,8 @@ services:
 
   archon-server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: ./python
+      dockerfile: Dockerfile.server
     container_name: archon-server
     restart: unless-stopped
     ports:
@@ -71,8 +71,8 @@ services:
 
   archon-mcp:
     build:
-      context: ./mcp_server
-      dockerfile: Dockerfile
+      context: ./python
+      dockerfile: Dockerfile.mcp
     container_name: archon-mcp
     restart: unless-stopped
     ports:
@@ -84,8 +84,8 @@ services:
 
   archon-frontend:
     build:
-      context: ./ui
-      dockerfile: Dockerfile
+      context: ./archon-ui-main
+      dockerfile: Dockerfile.frontend
     container_name: archon-frontend
     restart: unless-stopped
     ports:
