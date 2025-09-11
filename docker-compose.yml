@@ -301,6 +301,7 @@ services:
       - PROD=${PROD:-false}
       - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-}
       - VITE_SHOW_DEVTOOLS=${VITE_SHOW_DEVTOOLS:-false}
+      - VITE_TAILSCALE_HOST=${VITE_TAILSCALE_HOST:-}
     networks:
       - app-network
     volumes: []
