@@ -1,0 +1,20 @@
+{
+  "TCP": {
+    "443": {
+      "Handlers": {
+        "/": {
+          "Proxy": "http://localhost:3737"
+        },
+        "/api": {
+          "Proxy": "http://localhost:8181"
+        },
+        "/mcp": {
+          "Proxy": "http://localhost:8051"
+        },
+        "/supabase": {
+          "Proxy": "http://localhost:8000"
+        }
+      }
+    }
+  }
+}
