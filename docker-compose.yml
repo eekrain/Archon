@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   supabase-db:
     image: supabase/postgres:${SUPABASE_DB_VERSION}
@@ -11,7 +13,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - supabase-db-data:/var/lib/postgresql/data
-      - ./complete_setup.sql:/docker-entrypoint-initdb.d/complete_setup.sql
+      - ./migration/complete_setup.sql:/docker-entrypoint-initdb.d/complete_setup.sql
 
   supabase-api:
     image: postgrest/postgrest:${SUPABASE_API_VERSION}
@@ -98,3 +100,4 @@ services:
 
 volumes:
   supabase-db-data:
+    driver: local
