@@ -617,19 +617,31 @@ CREATE POLICY "Allow service role full access to archon_code_examples" ON archon
     FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 -- Allow authenticated users to write
-CREATE POLICY "Allow authenticated write access to archon_crawled_pages" ON archon_crawled_pages
-    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role')
-    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role')
+CREATE POLICY "Allow authenticated insert access to archon_crawled_pages" ON archon_crawled_pages
+    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role');
+
+CREATE POLICY "Allow authenticated update access to archon_crawled_pages" ON archon_crawled_pages
+    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role');
+
+CREATE POLICY "Allow authenticated delete access to archon_crawled_pages" ON archon_crawled_pages
     FOR DELETE USING (current_user = 'authenticated' OR current_user = 'service_role');
 
-CREATE POLICY "Allow authenticated write access to archon_sources" ON archon_sources
-    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role')
-    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role')
+CREATE POLICY "Allow authenticated insert access to archon_sources" ON archon_sources
+    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role');
+
+CREATE POLICY "Allow authenticated update access to archon_sources" ON archon_sources
+    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role');
+
+CREATE POLICY "Allow authenticated delete access to archon_sources" ON archon_sources
     FOR DELETE USING (current_user = 'authenticated' OR current_user = 'service_role');
 
-CREATE POLICY "Allow authenticated write access to archon_code_examples" ON archon_code_examples
-    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role')
-    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role')
+CREATE POLICY "Allow authenticated insert access to archon_code_examples" ON archon_code_examples
+    FOR INSERT USING (current_user = 'authenticated' OR current_user = 'service_role');
+
+CREATE POLICY "Allow authenticated update access to archon_code_examples" ON archon_code_examples
+    FOR UPDATE USING (current_user = 'authenticated' OR current_user = 'service_role');
+
+CREATE POLICY "Allow authenticated delete access to archon_code_examples" ON archon_code_examples
     FOR DELETE USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 -- Grant permissions to roles
