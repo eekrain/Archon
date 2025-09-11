@@ -82,7 +82,7 @@ services:
   # Supabase Studio (Web UI)
   # ------------------------
   supabase-studio:
-    image: supabase/studio:20250101-1a2b3c4d # pick a fixed digest/tag
+    image: supabase/studio:v0.23.11
     container_name: supabase-studio
     restart: unless-stopped
     depends_on:
