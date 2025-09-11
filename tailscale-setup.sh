@@ -23,27 +23,28 @@ echo "🛑 Stopping existing serves..."
 sudo tailscale serve stop 2>/dev/null || true
 sudo tailscale serve https stop 2>/dev/null || true
 
-# Configure serve paths using the new syntax (paths need to be configured differently)
-echo "⚙️  Configuring service paths..."
-echo "Note: With the new Tailscale serve syntax, paths are configured differently."
-echo "Setting up individual services with subdomain approach..."
+# Configure Nginx proxy via Tailscale serve
+echo "⚙️  Configuring Tailscale Serve to proxy Nginx..."
 
 # Stop any existing serves first
 sudo tailscale serve stop 2>/dev/null || true
 
-# Start with the main UI on root path
-sudo tailscale serve --bg http://localhost:$ARCHON_FRONTEND_PORT
+# Start Tailscale serve pointing to Nginx proxy
+sudo tailscale serve --bg http://localhost:8080
 
-echo "⚠️  IMPORTANT: Tailscale serve has changed!"
-echo "The new syntax doesn't support multiple paths on one domain easily."
-echo "For multiple services, consider using subdomains or different ports."
+echo "✅ Nginx proxy configured via Tailscale!"
 echo ""
-echo "Current configuration:"
-echo "  - Main UI: https://$(hostname).$(tailscale status --json | jq -r '.Self.DNSName | split(".")[1]')/"
+echo "🌐 All services now available via single HTTPS endpoint:"
+echo "  - Archon UI: https://$(hostname).$(tailscale status --json | jq -r '.Self.DNSName | split(".")[1]')/"
+echo "  - API: https://$(hostname).$(tailscale status --json | jq -r '.Self.DNSName | split(".")[1]')/api"
+echo "  - MCP: https://$(hostname).$(tailscale status --json | jq -r '.Self.DNSName | split(".")[1]')/mcp"
+echo "  - Supabase: https://$(hostname).$(tailscale status --json | jq -r '.Self.DNSName | split(".")[1]')/supabase"
 echo ""
-echo "For other services, you may need to:"
-echo "  1. Use different ports: sudo tailscale serve --bg 8181"
-echo "  2. Or set up subdomain proxies"
+echo "🔧 Nginx handles all path routing internally:"
+echo "  - / → Frontend (port 3737)"
+echo "  - /api → API Server (port 8181)"
+echo "  - /mcp → MCP Server (port 8051)"
+echo "  - /supabase → Supabase/Kong (port 8000)"
 
 echo ""
 echo "✅ Tailscale Serve configured!"
