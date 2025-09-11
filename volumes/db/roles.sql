@@ -5,11 +5,11 @@
 -- Create or update roles with password authentication
 DO $$
 BEGIN
-    -- Create or update supabase_auth_admin role with password
+    -- Create or update supabase_auth_admin role with password and superuser privileges
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-        CREATE ROLE supabase_auth_admin WITH LOGIN PASSWORD 'supersecretpassword' NOINHERIT CREATEROLE;
+        CREATE ROLE supabase_auth_admin WITH LOGIN PASSWORD 'supersecretpassword' NOINHERIT CREATEROLE SUPERUSER;
     ELSE
-        ALTER ROLE supabase_auth_admin WITH LOGIN PASSWORD 'supersecretpassword';
+        ALTER ROLE supabase_auth_admin WITH LOGIN PASSWORD 'supersecretpassword' SUPERUSER;
     END IF;
     
     -- Create or update authenticator role with password  
