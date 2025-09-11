@@ -608,26 +608,26 @@ CREATE POLICY "Allow public read access to archon_code_examples"
 
 -- Create policies for service role (full access)
 CREATE POLICY "Allow service role full access to archon_crawled_pages" ON archon_crawled_pages
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_sources" ON archon_sources
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_code_examples" ON archon_code_examples
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 -- Allow authenticated users to write
 CREATE POLICY "Allow authenticated write access to archon_crawled_pages" ON archon_crawled_pages
     FOR INSERT, UPDATE, DELETE TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated write access to archon_sources" ON archon_sources
     FOR INSERT, UPDATE, DELETE TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated write access to archon_code_examples" ON archon_code_examples
     FOR INSERT, UPDATE, DELETE TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 -- Grant permissions to roles
 GRANT ALL ON archon_crawled_pages TO supabase_admin;
@@ -839,40 +839,40 @@ ALTER TABLE archon_prompts ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for service role (full access)
 CREATE POLICY "Allow service role full access to archon_projects" ON archon_projects
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_tasks" ON archon_tasks
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_project_sources" ON archon_project_sources
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_document_versions" ON archon_document_versions
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_prompts" ON archon_prompts
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_user = 'service_role');
 
 -- Create RLS policies for authenticated users
 CREATE POLICY "Allow authenticated users to read and update archon_projects" ON archon_projects
     FOR ALL TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read and update archon_tasks" ON archon_tasks
     FOR ALL TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read and update archon_project_sources" ON archon_project_sources
     FOR ALL TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read archon_document_versions" ON archon_document_versions
     FOR SELECT TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read archon_prompts" ON archon_prompts
     FOR SELECT TO authenticated
-    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+    USING (current_user = 'authenticated' OR current_user = 'service_role');
 
 -- Allow anonymous read access for public visibility
 CREATE POLICY "Allow anonymous read access to archon_projects" ON archon_projects

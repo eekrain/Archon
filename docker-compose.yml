@@ -74,7 +74,7 @@ services:
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
-    entrypoint: bash -c 'eval "echo \"$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    entrypoint: bash -c 'cp /home/kong/temp.yml /home/kong/kong.yml && /docker-entrypoint.sh kong docker-start'
     networks:
       - app-network
 
@@ -217,6 +217,7 @@ services:
       - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
       - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
       - AGENTS_ENABLED=${AGENTS_ENABLED:-false}
+      - SUPABASE_DEV_MODE=true
     networks:
       - app-network
     volumes:
