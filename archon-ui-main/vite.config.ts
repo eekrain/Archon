@@ -282,8 +282,8 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       strictPort: true, // Exit if port is in use
       allowedHosts: (() => {
         const defaultHosts = ['localhost', '127.0.0.1', '::1'];
-        const tailscaleHosts = process.env.TAILSCALE_HOST?.trim()
-          ? [process.env.TAILSCALE_HOST.trim()]
+        const tailscaleHosts = env.VITE_TAILSCALE_HOST?.trim()
+          ? [env.VITE_TAILSCALE_HOST.trim()]
           : [];
         const customHosts = env.VITE_ALLOWED_HOSTS?.trim()
           ? env.VITE_ALLOWED_HOSTS.split(',').map(h => h.trim()).filter(Boolean)
