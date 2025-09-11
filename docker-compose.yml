@@ -23,6 +23,7 @@ services:
     volumes:
       - supabase-data:/var/lib/postgresql/data
       - ./migration/init_pgvector.sql:/docker-entrypoint-initdb.d/init_pgvector.sql:ro
+      - ./migration/init_roles.sql:/docker-entrypoint-initdb.d/init_roles.sql:ro
 
   supabase-api:
     image: postgrest/postgrest:${POSTGREST_VERSION:-latest}
@@ -45,18 +46,18 @@ services:
       start_period: 60s
 
   supabase-meta:
-    image: supabase/pg-meta:latest
+    image: supabase/postgres-meta:${POSTGRES_META_VERSION:-v0.60.5}
     container_name: supabase-meta
     restart: unless-stopped
     depends_on:
       supabase-db:
         condition: service_healthy
     environment:
-      PG_META_DB_HOST: supabase-db
-      PG_META_DB_PORT: 5432
-      PG_META_DB_NAME: ${POSTGRES_DB}
-      PG_META_DB_USER: ${POSTGRES_USER}
-      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: supabase-db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "8081:8080"
     networks:
