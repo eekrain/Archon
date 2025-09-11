@@ -1,0 +1,21 @@
+# Kong API Gateway Configuration
+# This file is required by Supabase for routing
+services:
+  - name: auth
+    url: http://auth:9999
+    routes:
+      - /auth/v1/
+    plugins:
+      - name: cors
+  - name: rest
+    url: http://rest:3000
+    routes:
+      - /rest/v1/
+    plugins:
+      - name: cors
+  - name: meta
+    url: http://meta:8080
+    routes:
+      - /meta/
+    plugins:
+      - name: cors

@@ -1,0 +1,2 @@
+-- JWT setup
+-- This file is required by Supabase but not essential for Archon

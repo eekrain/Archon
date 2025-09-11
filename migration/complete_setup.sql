@@ -44,10 +44,29 @@ $$;
 -- SECTION 2: EXTENSIONS
 -- =====================================================
 
--- Enable required PostgreSQL extensions
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- Extensions are typically pre-installed in Supabase image
+-- This script ensures they're available and handles any conflicts
+DO $$
+BEGIN
+    -- Only create extensions if they don't exist to avoid conflicts
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        CREATE EXTENSION IF NOT EXISTS vector;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
+        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    END IF;
+    
+    -- Also ensure uuid-ossp is available for UUID generation
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'uuid-ossp') THEN
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    END IF;
+END
+$$;
 
 -- =====================================================
 -- SECTION 3: CREDENTIALS AND SETTINGS
@@ -88,11 +107,16 @@ CREATE TRIGGER update_archon_settings_updated_at
 -- Create RLS (Row Level Security) policies for settings
 ALTER TABLE archon_settings ENABLE ROW LEVEL SECURITY;
 
+-- Use proper Supabase role checking
 CREATE POLICY "Allow service role full access" ON archon_settings
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read and update" ON archon_settings
     FOR ALL TO authenticated
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+
+CREATE POLICY "Allow anonymous read access" ON archon_settings
+    FOR SELECT TO anon
     USING (true);
 
 -- Grant permissions to roles
@@ -567,30 +591,43 @@ ALTER TABLE archon_code_examples ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read access to archon_crawled_pages"
   ON archon_crawled_pages
   FOR SELECT
-  TO public
+  TO anon, authenticated
   USING (true);
 
 CREATE POLICY "Allow public read access to archon_sources"
   ON archon_sources
   FOR SELECT
-  TO public
+  TO anon, authenticated
   USING (true);
 
 CREATE POLICY "Allow public read access to archon_code_examples"
   ON archon_code_examples
   FOR SELECT
-  TO public
+  TO anon, authenticated
   USING (true);
 
 -- Create policies for service role (full access)
 CREATE POLICY "Allow service role full access to archon_crawled_pages" ON archon_crawled_pages
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_sources" ON archon_sources
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_code_examples" ON archon_code_examples
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
+
+-- Allow authenticated users to write
+CREATE POLICY "Allow authenticated write access to archon_crawled_pages" ON archon_crawled_pages
+    FOR INSERT, UPDATE, DELETE TO authenticated
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+
+CREATE POLICY "Allow authenticated write access to archon_sources" ON archon_sources
+    FOR INSERT, UPDATE, DELETE TO authenticated
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+
+CREATE POLICY "Allow authenticated write access to archon_code_examples" ON archon_code_examples
+    FOR INSERT, UPDATE, DELETE TO authenticated
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
 
 -- Grant permissions to roles
 GRANT ALL ON archon_crawled_pages TO supabase_admin;
@@ -802,39 +839,60 @@ ALTER TABLE archon_prompts ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for service role (full access)
 CREATE POLICY "Allow service role full access to archon_projects" ON archon_projects
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_tasks" ON archon_tasks
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_project_sources" ON archon_project_sources
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_document_versions" ON archon_document_versions
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow service role full access to archon_prompts" ON archon_prompts
-    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin');
+    FOR ALL USING (current_user = 'postgres' OR current_user = 'supabase_admin' OR current_role() = 'service_role');
 
 -- Create RLS policies for authenticated users
 CREATE POLICY "Allow authenticated users to read and update archon_projects" ON archon_projects
     FOR ALL TO authenticated
-    USING (true);
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read and update archon_tasks" ON archon_tasks
     FOR ALL TO authenticated
-    USING (true);
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read and update archon_project_sources" ON archon_project_sources
     FOR ALL TO authenticated
-    USING (true);
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read archon_document_versions" ON archon_document_versions
     FOR SELECT TO authenticated
-    USING (true);
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
 
 CREATE POLICY "Allow authenticated users to read archon_prompts" ON archon_prompts
     FOR SELECT TO authenticated
+    USING (current_role() = 'authenticated' OR current_role() = 'service_role');
+
+-- Allow anonymous read access for public visibility
+CREATE POLICY "Allow anonymous read access to archon_projects" ON archon_projects
+    FOR SELECT TO anon
+    USING (true);
+
+CREATE POLICY "Allow anonymous read access to archon_tasks" ON archon_tasks
+    FOR SELECT TO anon
+    USING (true);
+
+CREATE POLICY "Allow anonymous read access to archon_project_sources" ON archon_project_sources
+    FOR SELECT TO anon
+    USING (true);
+
+CREATE POLICY "Allow anonymous read access to archon_document_versions" ON archon_document_versions
+    FOR SELECT TO anon
+    USING (true);
+
+CREATE POLICY "Allow anonymous read access to archon_prompts" ON archon_prompts
+    FOR SELECT TO anon
     USING (true);
 
 -- Grant permissions to roles
@@ -1068,12 +1126,50 @@ You are the Data-Builder Agent. Your purpose is to transform descriptions of dat
 Remember: Create production-ready data models.', 'System prompt for creating data models in the data array');
 
 -- =====================================================
+-- SECTION 12: FINAL SETUP VERIFICATION
+-- =====================================================
+
+-- Verify all extensions are available
+DO $$
+BEGIN
+    -- Check critical extensions
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        RAISE NOTICE 'Vector extension not found - embedding search will not work';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
+        RAISE NOTICE 'pgcrypto extension not found - UUID generation may fail';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'uuid-ossp') THEN
+        RAISE NOTICE 'uuid-ossp extension not found - UUID generation may fail';
+    END IF;
+    
+    -- Report successful setup
+    RAISE NOTICE 'Archon database setup completed successfully';
+END
+$$;
+
+-- =====================================================
 -- SETUP COMPLETE
 -- =====================================================
--- Your Archon database is now fully configured!
+-- Your Archon database is now fully configured for the simplified Supabase setup!
+--
+-- Database Access:
+-- - Studio: http://localhost:3000
+-- - API: http://localhost:8000
+-- - Archon UI: http://localhost:3737
 --
 -- Next steps:
--- 1. Add your OpenAI API key via the Settings UI
--- 2. Enable Projects feature if needed
--- 3. Start crawling websites or uploading documents
+-- 1. Start the services: docker compose up --build -d
+-- 2. Add your OpenAI API key via the Settings UI
+-- 3. Enable Projects feature if needed
+-- 4. Start crawling websites or uploading documents
+--
+-- Key Features Available:
+-- - Knowledge base with vector search
+-- - Code example extraction and search
+-- - Projects and tasks management
+-- - RAG with hybrid search capabilities
+-- - MCP server integration
 -- =====================================================
