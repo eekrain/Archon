@@ -282,13 +282,16 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       strictPort: true, // Exit if port is in use
       allowedHosts: (() => {
         const defaultHosts = ['localhost', '127.0.0.1', '::1'];
+        const tailscaleHosts = process.env.TAILSCALE_HOST?.trim()
+          ? [process.env.TAILSCALE_HOST.trim()]
+          : [];
         const customHosts = env.VITE_ALLOWED_HOSTS?.trim()
           ? env.VITE_ALLOWED_HOSTS.split(',').map(h => h.trim()).filter(Boolean)
           : [];
         const hostFromEnv = (process.env.HOST ?? env.HOST) && (process.env.HOST ?? env.HOST) !== 'localhost' 
           ? [process.env.HOST ?? env.HOST] 
           : [];
-        return [...new Set([...defaultHosts, ...hostFromEnv, ...customHosts])];
+        return [...new Set([...defaultHosts, ...tailscaleHosts, ...hostFromEnv, ...customHosts])];
       })(),
       proxy: {
         '/api': {
