@@ -1,33 +1,38 @@
 version: "3.9"
 
 services:
+  # ------------------------
+  # Supabase Database
+  # ------------------------
   supabase-db:
-    image: supabase/postgres:${SUPABASE_DB_VERSION:-15.8.1.047}
+    image: supabase/postgres:15.8.1.047
     container_name: supabase-db
     restart: unless-stopped
     ports:
       - "5432:5432"
     env_file:
       - .env
+    volumes:
+      - supabase-data:/var/lib/postgresql/data
+      - ./migration/complete_setup.sql:/docker-entrypoint-initdb.d/complete_setup.sql:ro
+    networks:
+      - app-network
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres} || exit 1",
         ]
       interval: 30s
       timeout: 10s
       retries: 30
       start_period: 180s
-    networks:
-      - app-network
-    volumes:
-      - supabase-data:/var/lib/postgresql/data
-      - ./migration/init_pgvector.sql:/docker-entrypoint-initdb.d/init_pgvector.sql:ro
-      - ./migration/init_all.sql:/docker-entrypoint-initdb.d/init_all.sql:ro
 
+  # ------------------------
+  # Supabase PostgREST API
+  # ------------------------
   supabase-api:
-    image: postgrest/postgrest:${POSTGREST_VERSION:-latest}
+    image: postgrest/postgrest:v13.0.6
     container_name: supabase-api
     restart: unless-stopped
     depends_on:
@@ -46,8 +51,11 @@ services:
       retries: 30
       start_period: 180s
 
+  # ------------------------
+  # Supabase pg-meta
+  # ------------------------
   supabase-meta:
-    image: supabase/postgres-meta:${POSTGRES_META_VERSION:-v0.60.5}
+    image: supabase/postgres-meta:v0.60.5
     container_name: supabase-meta
     restart: unless-stopped
     depends_on:
@@ -56,9 +64,9 @@ services:
     environment:
       DB_HOST: supabase-db
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-postgres}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "8081:8080"
     networks:
@@ -70,8 +78,11 @@ services:
       retries: 30
       start_period: 180s
 
+  # ------------------------
+  # Supabase Studio (Web UI)
+  # ------------------------
   supabase-studio:
-    image: supabase/studio:latest
+    image: supabase/studio:20250101-1a2b3c4d # pick a fixed digest/tag
     container_name: supabase-studio
     restart: unless-stopped
     depends_on:
@@ -80,7 +91,7 @@ services:
     environment:
       SUPABASE_URL: http://supabase-api:8000
       STUDIO_PG_META_URL: http://supabase-meta:8080
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "8080:3000"
     networks:
@@ -92,13 +103,17 @@ services:
       retries: 30
       start_period: 180s
 
+  # ------------------------
+  # Archon Server (FastAPI)
+  # ------------------------
   archon-server:
     build:
       context: ./python
       dockerfile: Dockerfile.server
     container_name: archon-server
+    restart: unless-stopped
     ports:
-      - "${ARCHON_SERVER_PORT}:${ARCHON_SERVER_PORT}"
+      - "${ARCHON_SERVER_PORT:-8181}:${ARCHON_SERVER_PORT:-8181}"
     env_file:
       - .env
     networks:
@@ -110,20 +125,24 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -fs http://localhost:${ARCHON_SERVER_PORT}/health || exit 1",
+          "curl -fs http://localhost:${ARCHON_SERVER_PORT:-8181}/health || exit 1",
         ]
       interval: 30s
       timeout: 10s
       retries: 30
       start_period: 180s
 
+  # ------------------------
+  # Archon MCP Server
+  # ------------------------
   archon-mcp:
     build:
       context: ./python
       dockerfile: Dockerfile.mcp
     container_name: archon-mcp
+    restart: unless-stopped
     ports:
-      - "${ARCHON_MCP_PORT}:${ARCHON_MCP_PORT}"
+      - "${ARCHON_MCP_PORT:-8051}:${ARCHON_MCP_PORT:-8051}"
     env_file:
       - .env
     networks:
@@ -133,12 +152,18 @@ services:
         condition: service_started
     healthcheck:
       test:
-        ["CMD-SHELL", "curl -fs http://localhost:${ARCHON_MCP_PORT} || exit 1"]
+        [
+          "CMD-SHELL",
+          "curl -fs http://localhost:${ARCHON_MCP_PORT:-8051} || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 30
       start_period: 180s
 
+  # ------------------------
+  # Archon Agents Service
+  # ------------------------
   archon-agents:
     profiles:
       - agents
@@ -146,8 +171,9 @@ services:
       context: ./python
       dockerfile: Dockerfile.agents
     container_name: archon-agents
+    restart: unless-stopped
     ports:
-      - "${ARCHON_AGENTS_PORT}:${ARCHON_AGENTS_PORT}"
+      - "${ARCHON_AGENTS_PORT:-8052}:${ARCHON_AGENTS_PORT:-8052}"
     env_file:
       - .env
     networks:
@@ -159,18 +185,22 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -fs http://localhost:${ARCHON_AGENTS_PORT}/health || exit 1",
+          "curl -fs http://localhost:${ARCHON_AGENTS_PORT:-8052}/health || exit 1",
         ]
       interval: 30s
       timeout: 10s
       retries: 30
       start_period: 180s
 
+  # ------------------------
+  # Archon Frontend (UI)
+  # ------------------------
   archon-frontend:
     build: ./archon-ui-main
     container_name: archon-ui
+    restart: unless-stopped
     ports:
-      - "${ARCHON_UI_PORT}:3737"
+      - "${ARCHON_UI_PORT:-3737}:3737"
     env_file:
       - .env
     networks:
